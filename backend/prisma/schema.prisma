@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  CONTRIBUTOR
+  SURGEON
+  ADMIN
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  FUNDED
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum ContributionStatus {
+  PENDING
+  CONFIRMED
+  REFUNDED
+}
+
+enum EscrowStatus {
+  HOLDING
+  PAID_TO_SURGEON
+  REFUNDED
+}
+
+enum EscrowTransactionType {
+  CONTRIBUTION
+  ADMIN_FEE
+  SURGEON_PAYMENT
+  REFUND
+  INSURANCE_FEE
+}
+
+enum PhotoPhase {
+  BEFORE
+  AFTER
+}
+
+enum AgreementStatus {
+  PENDING
+  PATIENT_SIGNED
+  SURGEON_SIGNED
+  FULLY_SIGNED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(PATIENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile         Profile?
+  listings        Listing[]      @relation("PatientListings")
+  contributions   Contribution[]
+  surgeonProfile  SurgeonProfile?
+  uploadedPictures Picture[]     @relation("UploaderPictures")
+}
+
+model Profile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  fullName    String
+  bio         String?
+  location    String?
+  socialLinks String? // JSON string: { instagram, twitter, tiktok, facebook }
+  avatarUrl   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SurgeryType {
+  id             String  @id @default(cuid())
+  name           String  @unique
+  description    String?
+  adminFeePercent Float   @default(10)
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  photoRequirements   PhotoRequirement[]
+  listings            Listing[]
+  insuranceFeeConfigs InsuranceFeeConfig[]
+}
+
+model PhotoRequirement {
+  id              String    @id @default(cuid())
+  surgeryTypeId   String
+  phase           PhotoPhase
+  count           Int       @default(1)
+  description     String?
+  daysAfterSurgery Int?
+
+  surgeryType SurgeryType @relation(fields: [surgeryTypeId], references: [id], onDelete: Cascade)
+  pictures    Picture[]
+}
+
+model Listing {
+  id                       String        @id @default(cuid())
+  patientId                String
+  surgeryTypeId            String
+  title                    String
+  description              String?
+  goalAmount               Float
+  adminFeePercent          Float         @default(10)
+  adminFeeAmount           Float
+  totalGoal                Float
+  deadline                 DateTime
+  status                   ListingStatus @default(DRAFT)
+  surgeonName              String?
+  surgeonOffice            String?
+  surgeonContact           String?
+  minContributionForPhotos Float         @default(0)
+  insuranceFeeAmount       Float         @default(0)
+  insuranceFeePaid         Boolean       @default(false)
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  patient       User           @relation("PatientListings", fields: [patientId], references: [id])
+  surgeryType   SurgeryType    @relation(fields: [surgeryTypeId], references: [id])
+  contributions Contribution[]
+  pictures      Picture[]
+  escrow        Escrow?
+  agreement     Agreement?
+}
+
+model Contribution {
+  id                  String             @id @default(cuid())
+  listingId           String
+  contributorId       String
+  amount              Float
+  status              ContributionStatus @default(PENDING)
+  qualifiesForPhotos  Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  listing     Listing @relation(fields: [listingId], references: [id])
+  contributor User    @relation(fields: [contributorId], references: [id])
+}
+
+model Escrow {
+  id          String       @id @default(cuid())
+  listingId   String       @unique
+  totalAmount Float        @default(0)
+  status      EscrowStatus @default(HOLDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  listing      Listing            @relation(fields: [listingId], references: [id])
+  transactions EscrowTransaction[]
+}
+
+model EscrowTransaction {
+  id          String                @id @default(cuid())
+  escrowId    String
+  amount      Float
+  type        EscrowTransactionType
+  description String?
+  createdAt   DateTime              @default(now())
+
+  escrow Escrow @relation(fields: [escrowId], references: [id])
+}
+
+model Picture {
+  id            String     @id @default(cuid())
+  listingId     String
+  uploadedBy    String
+  phase         PhotoPhase
+  filename      String
+  originalName  String
+  mimeType      String
+  requirementId String?
+  uploadedAt    DateTime   @default(now())
+  isReleased    Boolean    @default(false)
+
+  listing     Listing           @relation(fields: [listingId], references: [id])
+  uploader    User              @relation("UploaderPictures", fields: [uploadedBy], references: [id])
+  requirement PhotoRequirement? @relation(fields: [requirementId], references: [id])
+}
+
+model Agreement {
+  id                 String          @id @default(cuid())
+  listingId          String          @unique
+  patientSignedAt    DateTime?
+  surgeonSignedAt    DateTime?
+  consultationDocUrl String?
+  terms              String?
+  status             AgreementStatus @default(PENDING)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id])
+}
+
+model SurgeonProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  licenseNumber String?
+  specialty     String?
+  officeName    String?
+  officeAddress String?
+  phone         String?
+  website       String?
+  bio           String?
+  isSubscribed  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions SurgeonSubscription[]
+}
+
+model SurgeonSubscription {
+  id        String             @id @default(cuid())
+  surgeonId String
+  tierId    String
+  startDate DateTime           @default(now())
+  endDate   DateTime
+  status    SubscriptionStatus @default(ACTIVE)
+  amount    Float
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  surgeon SurgeonProfile    @relation(fields: [surgeonId], references: [id])
+  tier    SubscriptionTier  @relation(fields: [tierId], references: [id])
+}
+
+model SubscriptionTier {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  price        Float
+  durationDays Int
+  features     String   // JSON string array of features
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions SurgeonSubscription[]
+}
+
+model InsuranceFeeConfig {
+  id            String  @id @default(cuid())
+  surgeryTypeId String?
+  feeAmount     Float?
+  feePercent    Float   @default(5)
+  description   String?
+  isDefault     Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  surgeryType SurgeryType? @relation(fields: [surgeryTypeId], references: [id])
+}
