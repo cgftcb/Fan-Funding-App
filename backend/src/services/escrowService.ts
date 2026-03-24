@@ -1,4 +1,6 @@
-import { PrismaClient, EscrowTransactionType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+
+type EscrowTransactionType = 'CONTRIBUTION' | 'ADMIN_FEE' | 'SURGEON_PAYMENT' | 'REFUND' | 'INSURANCE_FEE';
 
 const prisma = new PrismaClient();
 

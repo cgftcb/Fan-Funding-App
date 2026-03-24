@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Fan Funding - Community-funded cosmetic surgery platform connecting patients with contributors" />
+    <title>FanFunding - Cosmetic Surgery Crowdfunding</title>
+    <!-- Prevent right-click context menu globally for image protection -->
+    <style>
+      .no-select {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      .no-pointer {
+        pointer-events: none;
+      }
+      img.protected {
+        -webkit-user-drag: none;
+        -khtml-user-drag: none;
+        -moz-user-drag: none;
+        -o-user-drag: none;
+        user-drag: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Global protection against right-click on protected images
+      document.addEventListener('contextmenu', function(e) {
+        if (e.target && (e.target.classList.contains('protected-image') || e.target.closest('.protected-image-container'))) {
+          e.preventDefault();
+          return false;
+        }
+      });
+      // Prevent keyboard shortcuts for saving images
+      document.addEventListener('keydown', function(e) {
+        if (e.target && e.target.closest('.protected-image-container')) {
+          if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
