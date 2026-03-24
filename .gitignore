@@ -13,3 +13,7 @@ backend/dist/
 backend/uploads/
 prisma/*.db
 prisma/*.db-journal
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
